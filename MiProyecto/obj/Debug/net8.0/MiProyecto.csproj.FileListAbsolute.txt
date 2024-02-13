@@ -1,0 +1,7 @@
+C:\Users\Acer\Desktop\CAMILO TODOS LOS ARCHIVOS\taller programacion\btw\api_task\MiProyecto\obj\Debug\net8.0\MiProyecto.csproj.AssemblyReference.cache
+C:\Users\Acer\Desktop\CAMILO TODOS LOS ARCHIVOS\taller programacion\btw\api_task\MiProyecto\obj\Debug\net8.0\MiProyecto.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Acer\Desktop\CAMILO TODOS LOS ARCHIVOS\taller programacion\btw\api_task\MiProyecto\obj\Debug\net8.0\MiProyecto.AssemblyInfoInputs.cache
+C:\Users\Acer\Desktop\CAMILO TODOS LOS ARCHIVOS\taller programacion\btw\api_task\MiProyecto\obj\Debug\net8.0\MiProyecto.AssemblyInfo.cs
+C:\Users\Acer\Desktop\CAMILO TODOS LOS ARCHIVOS\taller programacion\btw\api_task\MiProyecto\obj\Debug\net8.0\MiProyecto.csproj.CoreCompileInputs.cache
+C:\Users\Acer\Desktop\CAMILO TODOS LOS ARCHIVOS\taller programacion\btw\api_task\MiProyecto\obj\Debug\net8.0\MiProyecto.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\Acer\Desktop\CAMILO TODOS LOS ARCHIVOS\taller programacion\btw\api_task\MiProyecto\obj\Debug\net8.0\MiProyecto.MvcApplicationPartsAssemblyInfo.cache
