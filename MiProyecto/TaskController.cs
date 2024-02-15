@@ -4,64 +4,89 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using MiProyecto.Conexion;
+using MiProyecto.Models;
+
 
 namespace MiProyecto
 {
-    
     public class TaskController : ControllerBase
     {
+        private readonly IConexionService conexionService;
+
+        public TaskController(IConexionService conexionService)
+        {
+            this.conexionService = conexionService;
+        }
+
         [HttpGet("/tasks")]
         public async Task<ActionResult<IEnumerable<Dictionary<string, object>>>> GetTasks()
         {
-            // Conexion a la base de datos PostgreSQL
-            NpgsqlConnection conn= Conexion.Conect();
-            await conn.OpenAsync();
-
-            await using var cmd = new NpgsqlCommand("SELECT * FROM tasks", conn);
-            await using var reader = await cmd.ExecuteReaderAsync();
-
-            var tasksList = new List<Dictionary<string, object>>();
-            while (await reader.ReadAsync())
+            try
             {
-                var task = new Dictionary<string, object>
-                {
-                    ["id"] = reader.GetInt32(0),
-                    ["title"] = reader.GetString(1),
-                    ["description"] = reader.IsDBNull(2) ? null : reader.GetString(2),
-                    ["status"] = reader.GetString(3),
-                    ["due_date"] = reader.GetDateTime(4),
-                    ["user_id"] = reader.GetInt32(5),
-                    ["create_date"] = reader.GetDateTime(6)
-                };
-                tasksList.Add(task);
-            }
+                // Obtener la cadena de conexión a la base de datos PostgreSQL
+                string connectionString = conexionService.GetConnectionString();
+                
+                // Crear una conexión a la base de datos PostgreSQL
+                using NpgsqlConnection conn = new NpgsqlConnection(connectionString);
+                await conn.OpenAsync();
 
-            return Ok(tasksList);
+                // Ejecutar la consulta SQL para obtener las tareas
+                using NpgsqlCommand cmd = new NpgsqlCommand("SELECT * FROM tasks", conn);
+                using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync();
+
+                var tasksList = new List<Dictionary<string, object>>();
+                while (await reader.ReadAsync())
+                {
+                    var task = new Dictionary<string, object>
+                    {
+                        ["id"] = reader.GetInt32(0),
+                        ["title"] = reader.GetString(1),
+                        ["description"] = reader.IsDBNull(2) ? null : reader.GetString(2),
+                        ["status"] = reader.GetString(3),
+                        ["due_date"] = reader.GetDateTime(4),
+                        ["user_id"] = reader.GetInt32(5),
+                        ["create_date"] = reader.GetDateTime(6)
+                    };
+                    tasksList.Add(task);
+                }
+
+                return Ok(tasksList);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error al obtener las tareas: {ex.Message}");
+            }
         }
 
         [HttpPost("/add_task")]
-        public async Task<ActionResult> AddTask([FromBody] Dictionary<string, object> taskData)
+        public async Task<ActionResult> AddTask([FromBody] TaskDataModel taskData)
         {
             try
             {
-                // Extraer los datos de la tarea del cuerpo de la solicitud HTTP
-                var title = taskData["title"].ToString();
-                var description = taskData.ContainsKey("description") ? taskData["description"].ToString() : null;
-                var status = taskData["status"].ToString();
-                var dueDate = DateTime.Parse(taskData["due_date"].ToString());
-                var userId = Convert.ToInt32(taskData["user_id"]);
+                // Validar los datos recibidos
+                if (taskData == null || string.IsNullOrEmpty(taskData.Title) || string.IsNullOrEmpty(taskData.Status))
+                {
+                    return BadRequest("Los datos de la tarea son inválidos.");
+                }
 
-                // Conexion a la base de datos PostgreSQL
-                using var conn = Conexion.Conect;
+                // Obtener la cadena de conexión a la base de datos PostgreSQL
+                string sqlQuery = @"
+                    INSERT INTO tasks (title, description, status, due_date, user_id)
+                    VALUES (@title, @description, @status, @dueDate, @userId)";
+
+                string connectionString = conexionService.GetConnectionString();
+
+                // Crear una conexión a la base de datos PostgreSQL
+                using NpgsqlConnection conn = new NpgsqlConnection(connectionString);
+                await conn.OpenAsync();
 
                 // Ejecutar una consulta SQL para insertar la nueva tarea en la tabla 'tasks'
-                using var cmd = new NpgsqlCommand("INSERT INTO tasks (title, description, status, due_date, user_id, create_date) VALUES (@title, @description, @status, @dueDate, @userId, @createDate)", conn);
-                cmd.Parameters.AddWithValue("@title", title);
-                cmd.Parameters.AddWithValue("@description", description);
-                cmd.Parameters.AddWithValue("@status", status);
-                cmd.Parameters.AddWithValue("@dueDate", dueDate);
-                cmd.Parameters.AddWithValue("@userId", userId);
-                cmd.Parameters.AddWithValue("@createDate", DateTime.Now);
+                using NpgsqlCommand cmd = new NpgsqlCommand(sqlQuery, conn);
+                cmd.Parameters.AddWithValue("@title", taskData.Title);
+                cmd.Parameters.AddWithValue("@description", string.IsNullOrEmpty(taskData.Description) ? DBNull.Value : taskData.Description);
+                cmd.Parameters.AddWithValue("@status", taskData.Status);
+                cmd.Parameters.AddWithValue("@dueDate", taskData.DueDate);
+                cmd.Parameters.AddWithValue("@userId", taskData.UserId);
 
                 await cmd.ExecuteNonQueryAsync();
 
@@ -75,7 +100,6 @@ namespace MiProyecto
             }
         }
 
-
         [HttpPut("/edit_task/{id_task}")]
         public async Task<ActionResult> EditTask(int id_task, [FromBody] Dictionary<string, object> taskData)
         {
@@ -87,11 +111,15 @@ namespace MiProyecto
                 var status = taskData["status"].ToString();
                 var dueDate = DateTime.Parse(taskData["due_date"].ToString());
 
-                // Conexion a la base de datos PostgreSQL
-                using var conn = Conexion.Conect;
+                // Obtener la cadena de conexión a la base de datos PostgreSQL
+                string connectionString = conexionService.GetConnectionString();
+                
+                // Crear una conexión a la base de datos PostgreSQL
+                using NpgsqlConnection conn = new NpgsqlConnection(connectionString);
+                await conn.OpenAsync();
 
                 // Ejecutar una consulta SQL para actualizar los datos de la tarea en la tabla 'tasks' según el 'id_task' proporcionado
-                using var cmd = new NpgsqlCommand("UPDATE tasks SET title = @title, description = @description, status = @status, due_date = @dueDate WHERE id_task = @idTask", conn);
+                using NpgsqlCommand cmd = new NpgsqlCommand("UPDATE tasks SET title = @title, description = @description, status = @status, due_date = @dueDate WHERE id_task = @idTask", conn);
                 cmd.Parameters.AddWithValue("@title", title);
                 cmd.Parameters.AddWithValue("@description", description);
                 cmd.Parameters.AddWithValue("@status", status);
@@ -116,11 +144,15 @@ namespace MiProyecto
         {
             try
             {
-                // Conexion a la base de datos PostgreSQL
-                using var conn = Conexion.Conect;
+                // Obtener la cadena de conexión a la base de datos PostgreSQL
+                string connectionString = conexionService.GetConnectionString();
+                
+                // Crear una conexión a la base de datos PostgreSQL
+                using NpgsqlConnection conn = new NpgsqlConnection(connectionString);
+                await conn.OpenAsync();
 
                 // Ejecutar una consulta SQL para eliminar la tarea correspondiente de la tabla 'tasks' según el 'id_task' proporcionado
-                using var cmd = new NpgsqlCommand("DELETE FROM tasks WHERE id_task = @idTask", conn);
+                using NpgsqlCommand cmd = new NpgsqlCommand("DELETE FROM tasks WHERE id_task = @idTask", conn);
                 cmd.Parameters.AddWithValue("@idTask", id_task);
 
                 await cmd.ExecuteNonQueryAsync();
@@ -136,21 +168,24 @@ namespace MiProyecto
         }
 
 
-        [HttpGet("/search_task/{id}")]
+       [HttpGet("/search_task/{id}")]
         public async Task<ActionResult> SearchTask(int id)
         {
             try
             {
-                // Conexion a la base de datos PostgreSQL
-                //using var conn = Conexion.Conect;
-                NpgsqlConnection connection = Conexion.Conect();
+                // Obtener la cadena de conexión a la base de datos PostgreSQL
+                string connectionString = conexionService.GetConnectionString();
+                
+                // Crear una conexión a la base de datos PostgreSQL
+                using NpgsqlConnection conn = new NpgsqlConnection(connectionString);
+                await conn.OpenAsync();
 
                 // Ejecutar una consulta SQL para buscar la tarea correspondiente en la tabla 'tasks' según el 'id' proporcionado
-                using var cmd = new NpgsqlCommand("SELECT * FROM tasks WHERE id_task = @idTask", connection);
+                using NpgsqlCommand cmd = new NpgsqlCommand("SELECT * FROM tasks WHERE id_task = @idTask", conn);
                 cmd.Parameters.AddWithValue("@idTask", id);
 
                 // Ejecutar la consulta y obtener el resultado
-                using var reader = await cmd.ExecuteReaderAsync();
+                using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync();
 
                 // Verificar si se encontró una tarea con el ID proporcionado
                 if (await reader.ReadAsync())
@@ -185,3 +220,4 @@ namespace MiProyecto
 
     }
 }
+
